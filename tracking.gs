@@ -1,40 +1,29 @@
-function incrementNumUses_() {
-  try {
-    var numCopyDownUses = PropertiesService.getUserProperties().getProperty('numCopyDownUses');
-    if (parseInt(numCopyDownUses)) {
-      numCopyDownUses = parseInt(numCopyDownUses) + 1;
-    } else {
-      numCopyDownUses = 1;
-    }
-    PropertiesService.getUserProperties().setProperty('numCopyDownUses', numCopyDownUses);
-  } catch(err) {
-    var errInfo = catchToString_(err);
-    Browser.msgBox(errInfo);
-  }
+function logFormulasCopiedDown_()
+{
+  var documentProperties = PropertiesService.getDocumentProperties();
+  var systemName = documentProperties.getProperty("systemName");
+  NVAddOns.log("Formulas%20Copied%20Down", scriptName, scriptTrackingId, systemName)
 }
 
-function logAuthEmailSent_() {
+
+function logAuthEmailSent_()
+{
   var documentProperties = PropertiesService.getDocumentProperties();
   var systemName = documentProperties.getProperty("systemName");
   NVAddOns.log("Reauthorization%20Email%20Sent", scriptName, scriptTrackingId, systemName)
+}
+
+
+function logRepeatInstall_() {
+  var docProperties = PropertiesService.getDocumentProperties();
+  var systemName = docProperties.getProperty('systemName');
+  NVAddOns.log("Repeat%20Install", scriptName, scriptTrackingId, systemName)
 }
 
 function logFirstInstall_() {
   var docProperties = PropertiesService.getDocumentProperties();
   var systemName = docProperties.getProperty('systemName');
   NVAddOns.log("First%20Install", scriptName, scriptTrackingId, systemName)
-}
-
-function logFormulasCopiedDown_() {
-  var documentProperties = PropertiesService.getDocumentProperties();
-  var systemName = documentProperties.getProperty("systemName");
-  NVAddOns.log("Formulas%20Copied%20Down", scriptName, scriptTrackingId, systemName)
-}
-
-function logRepeatInstall_() {
-  var docProperties = PropertiesService.getDocumentProperties();
-  var systemName = docProperties.getProperty('systemName');
-  NVAddOns.log("Repeat%20Install", scriptName, scriptTrackingId, systemName)
 }
 
 // Call this function from within the first major UI Setup step.
@@ -62,3 +51,18 @@ function setSid_() {
   }
 }
 
+
+function incrementNumUses_() {
+  try {
+    var numCopyDownUses = PropertiesService.getUserProperties().getProperty('numCopyDownUses');
+    if (parseInt(numCopyDownUses)) {
+      numCopyDownUses = parseInt(numCopyDownUses) + 1;
+    } else {
+      numCopyDownUses = 1;
+    }
+    PropertiesService.getUserProperties().setProperty('numCopyDownUses', numCopyDownUses);
+  } catch(err) {
+    var errInfo = catchToString_(err);
+    Browser.msgBox(errInfo);
+  }
+}
