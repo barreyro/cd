@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<head>
+<base target="_top">
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/themes/smoothness/jquery-ui.css" />
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.1/jquery-ui.min.js"></script>
+<?!= include('switch_js'); ?>
+<link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons.css">
+<?!= include('switch_css'); ?>
+<style>
+  body {
+    padding: 0px;
+    margin: 0px;
+  }
+  #main {
+    font-family: "Arial";
+  }
+
+  .switch-button-label {
+    font-size: 24px;
+  }
+  
+  #slider-div {
+    position: relative;
+    top: 25px;
+    width: 193px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .hidden {
+    display: none;
+  }
+  
+  .section-header {
+    margin: 10px;
+    font-size: 16px;
+  }
+  
+  #on-off {
+   position: absolute;
+   top: 0px;
+   bottom: 100px;
+   width: 300px;
+   height: 70px;
+   border-bottom: 1px solid grey;
+   background-color: whiteSmoke;
+  }
+  
+  #off-text {
+    position: absolute;
+    top: 90px;
+    bottom: 70px;
+    margin: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 280px;
+  }
+  
+  #as-values-options {
+    display: block;
+    position: absolute;
+    top: 70px;
+    bottom: 70px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+    
+  td {
+    padding: 5px;
+  }
+  
+  th {
+    padding: 5px;
+    vertical-align: bottom;
+  }
+  
+  table {
+    width: 270px;
+    margin-left: 10px
+  }
+
+ .check-col {
+   width: 40px;
+ }
+ 
+ .inactive {
+   opacity: 0.5;
+ }
+ 
+ #help-text {
+   margin-top: 10px;
+ }
+ 
+ #copydown-gif {
+   display: block;
+   margin-left: auto;
+   margin-right: auto;
+ }
+ 
+ #table-help {
+  font-family: "Arial";
+  font-size: 12px;
+ }
+  
+  
+ #button-panel {
+   position: absolute;
+   bottom: 0px;
+   height: 70px;
+   border-top: 1px solid grey;
+   background-color: whiteSmoke;
+   width: 300px;
+ } 
+ 
+ #save-button {
+   margin: 15px;
+ }
+ 
+ .check-col {
+   width: 40px;
+ }
+ 
+ #main {
+   width: 300px;
+   overflow: hidden;
+ }
+ 
+ #loading-gif {
+    position: absolute;
+    top: 200px;
+    left: 100px;
+  }
+
+h2 {
+  margin: 10px;
+  width: 280px;
+}
+
+p {
+  font-family: "Arial";
+  margin: 10px;
+  width: 280px
+}
+
+#secondary-options {
+  top: 80px;
+  overflow-x: hidden;
+}
+
+#no-formulas-note {
+  position: absolute;
+  top: 120px;
+  bottom: 70px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#refresh-button {
+ position: absolute;
+ right: 15px;
+ margin-top: 20px;
+}
+
+#save-button {
+ position: absolute;
+ left: 15px;
+ margin-top: 20px;
+}
+
+#formula-row {
+  margin: 10px;
+  position: absolute;
+  top: 80px;
+}
+
+#formula-row-select {
+ margin-left: 10px;
+}
+
+#as-values-options {
+  position: absolute;
+  top: 120px;
+
+}
+
+.pull-right {
+  text-align: right;
+}
+ 
+</style>
+</head>
+<body>
+<div id="main">
+<div id = "on-off">
+    <div id="slider-div">
+      <input id="slider" type="checkbox" class="hidden" value="0" disabled>
+    </div>
+</div>
+<div id = "secondary-options" class="hidden">
+  <div id="formula-row"><span>Formula Row</span>
+  <span>
+    <select id="formula-row-select">
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+      <option value="8">8</option>
+      <option value="9">9</option>
+      <option value="10">10</option>
+    </select>
+    </span>
+  </div>
+  <div id = "no-formulas-note"></div>
+  <div id = "as-values-options"></div>
+  <div id = "button-panel"><input type="button" id = "save-button" class="action" value="Save settings" disabled><input type="button" id = "refresh-button" value="Rediscover formulas"></div>
+  
+</div>
+<div id = "off-text" class="hidden">
+  <p>This Add-on allows you to perform calculations in the same rows as inbound Google Form submissions. When turned on, any formulas in row 2 or 3 (you choose) of <span id="form-sheet-name">the form responses sheet</span> will be automatically copied and calculated for new submission rows.</p>
+  <p>Additional checkboxes allow you to determine whether to leave formulas live, or paste back their results as values.</p>
+  <p>Combine with the <a href="http://cloudlab.newvisions.org/add-ons/formmule-email-merge-utility">formMule</a> or <a href="http://cloudlab.newvisions.org/add-ons/autocrat">autoCrat</a> Add-on for Sheets to bring calculated values into your Form-triggered email and document merges.</p>
+</div>
+<img id = "loading-gif" src = "https://googledrive.com/host/0B2-Pf-O8LZyGendST1o3YlBzS1E"/>
+</div>
+
+</body>
+
+<script>
+
+var TRIGGER_STATE = false;
+var FORMULA_ROW = 2;
+
+$(function() {
+ google.script.run.withSuccessHandler(setTriggerValue).getTriggerState()
+});
+
+
+function setTriggerValue(returnObj) {
+ TRIGGER_STATE = returnObj.triggerState;
+ FORMULA_ROW = returnObj.formulaRow ? returnObj.formulaRow : 2;
+ var value = "disallowed"; 
+ var triggerState = returnObj.triggerState;
+ $('#loading-gif').toggleClass('hidden',true);
+ if (triggerState) {
+   $('#secondary-options').toggleClass('hidden', false) ;
+   $('#secondary-options input[type=checkbox]').attr('disabled', false);
+   google.script.run.withSuccessHandler(showCopyDownOptions).getAvailableHeaders(FORMULA_ROW);
+ }
+ if (!triggerState) {
+   $('#secondary-options').toggleClass('hidden', true);
+   $('#off-text').toggleClass('hidden', false);
+   value = false;
+ } else if (triggerState === "this_user") {
+   value = true;
+ }
+ if (value !== "disallowed") {
+   $('#slider').switchButton({
+    width: 80,
+    height: 25,
+    button_width: 50,
+    on_callback: setTrigger,
+    off_callback: unsetTrigger,
+    checked: value
+   }).toggleClass('hidden',false);
+ } else {
+   $('#slider').switchButton({
+    width: 80,
+    height: 25,
+    button_width: 50,
+    checked: value
+   }).toggleClass('hidden',false);
+   $('.switch-button-label').unbind('click').toggleClass('inactive', true);
+   $('.switch-button-background').unbind('click').toggleClass('inactive', true);
+   $('.switch-button-button').unbind('click').toggleClass('inactive', true);
+   $('#slider-div').append('<div id="help-text">This feature has already been set by ' + triggerState.user + '</div>');
+ }
+}
+
+
+function enableSaveButton() {
+  $('#save-button').prop('disabled', false);
+  var selectAllSet = "false";
+  $('#save-button').click(function() {
+     var allVals = [];
+     $('#secondary-options input[type=checkbox]:checked').each(function() {
+       if ($(this).val() !== "select-all") {
+         allVals.push($(this).val());
+       } else {
+         selectAllSet = "true";
+       }
+     });
+     $('#save-button').prop('disabled', true);
+     $('#as-values-options').toggleClass('inactive', true);
+     google.script.run.withSuccessHandler(savedSuccess).setAsValuesCols(allVals, selectAllSet);
+   });
+}
+
+
+function savedSuccess() {
+  $('#as-values-options').toggleClass('inactive', false);
+}
+
+
+function refreshCopyDownOptions() {
+   $('#save-button').prop('disabled', true);
+   $('#loading-gif').toggleClass('hidden',false);
+   $('#secondary-options').toggleClass('inactive', true);
+   var formulaRow = $('#formula-row').val();
+   google.script.run.withSuccessHandler(showCopyDownOptions).getAvailableHeaders(FORMULA_ROW, true);
+}
+
+
+function showCopyDownOptions(returnObj) {
+  console.log(JSON.stringify(returnObj));
+  $('#refresh-button').unbind().click(refreshCopyDownOptions);
+  $('#secondary-options').toggleClass('inactive', false);
+  var selectAll = returnObj.selectAllSet;
+  var copyDownOptions = returnObj.availableHeaders;
+  FORMULA_ROW = returnObj.formulaRow ? returnObj.formulaRow : 2;
+  if (copyDownOptions.length === 0) {
+    $('#as-values-options').html('');
+    $('#no-formulas-note').html("<h2>You currently have no formulas in row " + FORMULA_ROW + " of your form submissions sheet.</h2>"
+    + "<p>Try adding or inserting column headers in the same sheet as your form submissions, then create your formulas in row " + FORMULA_ROW + ". Click \"Rediscover formulas\" and you'll see your row "  + FORMULA_ROW + " formulas listed in the sidebar, each with the option to paste formula results as values.  These formulas will copy down, calculate, and paste as values each time a form entry comes in!  The \"Formula Copy Down Status\" column is used by the Add-on to know which rows it has already executed on, so don't delete it;)</p>"
+    + "<p>Examples:</p>"
+    + "<ul>"
+    + "<li>Use simple arithmetic (ex. =A2*B2..) to calculate subtotals, etc.</li>"
+    + "<li>Use the IF formula (ex. =IF(A2=\"Correct answer\", 1, 0) to evaluate matches, set flags based on conditions, etc.</li>"
+    + "<li>Use VLOOKUP formula to look up values from a match in another sheet. (ex. =VLOOKUP(B2, MasterStudentList!A:E, 4, FALSE)</li>"
+    + "</ul>"
+    + '<p><a href="https://sites.google.com/a/newvisions.org/cloudlab-spreadsheet-fundamentals/">Learn more about using formulas in Google Sheets...</a></p>');
+  } else {
+    $('#no-formulas-note').html('');
+    var table = '<p id="table-help">The formulas below were found in row ' + FORMULA_ROW + ' of your form responses sheet, and will copy down automatically as new submissions arrive. Use the checkboxes to indicate which of them you want to \"paste as values\" upon copy. Click "Rediscover formulas" to see changes in the Sheet reflected below.</p>';
+    table += '<table id = "as-values-table">';
+    table += '<tr><th>Column</th><th>Formula</th><th class="check-col">Paste as values?</th></tr>';
+    for (var i=0; i<copyDownOptions.length; i++) {
+      table += '<tr><td>' + trimToLength(copyDownOptions[i].header, 10) + '</td><td>' + trimToLength(copyDownOptions[i].formula, 10) + '</td><td class="check-col">';
+      if (copyDownOptions[i].state === 1) {
+        table += '<input class="header-checkbox" type="checkbox" value="' + copyDownOptions[i].header + '" checked disabled>';
+      } else {
+        table += '<input class="header-checkbox" type="checkbox" value="' + copyDownOptions[i].header + '" disabled>';
+      }
+      table += '</tr>';
+    }
+    if (copyDownOptions.length > 0) {
+      table += '<tr><th colspan=2 class="pull-right">Select/Deselect all</th><th class="check-col"><input id="select-all" type="checkbox" value="select-all" disabled></th></tr>';
+    }
+    table += "</table>"; 
+    $('#as-values-options').html(table);
+    if (returnObj.formulaRow) {
+      $('#formula-row-select').val(returnObj.formulaRow);
+    }
+    if (selectAll === "true") {
+      $('#select-all').prop('checked', true);
+      $('.header-checkbox').attr('checked', true);
+    }
+    $('#select-all').unbind().click(function() { checkSelectAll(); }); 
+    enableSaveButton();
+  }
+  $('#formula-row-select').unbind().change(function() { refreshFormulaRow(); });
+  $('#secondary-options').toggleClass('hidden', false);
+  $('#off-text').toggleClass('hidden', true);
+  if (TRIGGER_STATE) {
+    $('#secondary-options input[type=checkbox]').prop('disabled', false);
+    $('#secondary-options input[type=checkbox]').click(enableSaveButton);
+  }
+  $('#loading-gif').toggleClass('hidden',true);
+}
+
+
+function checkSelectAll() {
+  if ($('#select-all').is(':checked')) {
+    $('.header-checkbox').prop('checked', true);
+  } else {
+    $('.header-checkbox').prop('checked', false);
+  }
+}
+
+
+function refreshFormulaRow() {
+  $('#loading-gif').toggleClass('hidden',false);
+  $('#secondary-options').toggleClass('inactive', true);
+  var formulaRow = $('#formula-row-select').val();
+  google.script.run.withSuccessHandler(showCopyDownOptions).getAvailableHeaders(formulaRow);
+}
+
+
+function setTrigger() {
+  $('#loading-gif').toggleClass('hidden',false);
+  $('#off-text').toggleClass('hidden', true);
+  google.script.run.withSuccessHandler(reallySetTrigger).getSetFirstFormSubmission();
+}
+
+function reallySetTrigger() {
+  google.script.run.withSuccessHandler(triggerSet).withFailureHandler(reallySetTrigger).setTriggerServerSide();  
+}
+
+
+function triggerSet(triggerStatus) {
+  //trigger status can be: success, already set, set by this user, or a username
+  $('#secondary-options').toggleClass('hidden', false);
+  $('#off-text').toggleClass('hidden', true);
+  if ((triggerStatus !== "success") && (triggerStatus !== "already set") && (triggerStatus !== "set by this user")) {
+   $("#secondary-options").html("Trigger already set by " + triggerStatus); 
+   return;
+  }
+  $('#secondary-options input[type=checkbox]').attr('disabled', false);
+  TRIGGER_STATE = 'this_user';
+  google.script.run.withSuccessHandler(showCopyDownOptions).getAvailableHeaders(FORMULA_ROW);
+}
+
+
+function unsetTrigger() {
+  $('#loading-gif').toggleClass('hidden',false);
+  $('#secondary-options').toggleClass('hidden', true);
+  google.script.run.withSuccessHandler(triggerUnset).withFailureHandler(unsetTrigger).unsetTriggerServerSide();
+}
+
+
+function triggerUnset(triggerStatus) {
+  $('#loading-gif').toggleClass('hidden',true);
+  $('#secondary-options').toggleClass('hidden', true);
+  $('#off-text').toggleClass('hidden', false);
+  $('#secondary-options input[type=checkbox]').attr('checked', false).attr('disabled', true);
+  TRIGGER_STATE = 'false';
+  google.script.run.setAsValuesCols([]);
+}
+
+
+function trimToLength(string, m) {
+  return (string.length > m) 
+    ? jQuery.trim(string).substring(0, m) + "..."
+    : string;
+};
+
+
+
+</script>
