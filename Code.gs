@@ -673,4 +673,3 @@ function logErrInfo_(errInfo) {
   var date = new Date();
   sheet.getRange(sheet.getLastRow()+1, 1, 1, 2).setValues([[date, errInfo]]);;
 }
-
