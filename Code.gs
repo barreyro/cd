@@ -6,35 +6,149 @@ function onInstall(e) {
   launchCopyDownUi()
 }
 
-function checkAuthStatus() {
-  var authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
-  var authStatus = authInfo.getAuthorizationStatus();
-  if (authStatus == ScriptApp.AuthorizationStatus.REQUIRED) {
-    var props = PropertiesService.getDocumentProperties();
-    var lastAuthEmailDate = props.getProperty('lastAuthEmailDate');
-    var today = new Date().toDateString();
-    if (lastAuthEmailDate != today) {
-      if (MailApp.getRemainingDailyQuota() > 0) {
-        var html = HtmlService.createTemplateFromFile('AuthorizationEmail');
-        html.url = authInfo.getAuthorizationUrl();
-        html.addonTitle = addonTitle;
-        var message = html.evaluate();
-        MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
-                          'Authorization Required',
-                          message.getContent(), {
-                            name: addonTitle,
-                            htmlBody: message.getContent()
-                          }
-                         );
-        logAuthEmailSent_();
-      }
-      props.setProperty('lastAuthEmailDate', today);
+function onOpen(e) {
+  buildFullModeMenu(e);
+}
+
+
+function buildFullModeMenu(e) {
+  var menu = SpreadsheetApp.getUi().createAddonMenu();
+  menu.addItem('copyDown settings', 'launchCopyDownUi');
+  menu.addToUi();
+}
+
+
+function launchCopyDownUi() {
+  var formUrl = getFormUrl(); 
+  if (formUrl) {
+    setSid_();
+    try {
+      var form = FormApp.openByUrl(formUrl);
+    } catch (err) {
+      SpreadsheetApp.getUi().alert("Oops! It appears you don't have edit rights on the attached form. copyDown can only work with Forms that you have editing rights on.");
+      return;
     }
-    return false;
+    var template = HtmlService.createTemplateFromFile('interface');
+    SpreadsheetApp.getUi().showSidebar(template.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME).setTitle("Copy Down Formulas on Form Submit"));
   } else {
-    return true;
+    var template = HtmlService.createTemplateFromFile('formCreator');
+    SpreadsheetApp.getUi().showModalDialog(template.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME).setHeight(100), "Attach a form to this Spreadsheet?");
   }
 }
+
+// replace with new Sheets method once it is added.
+function getFormUrl(ss) {
+  if (ss !== true) {
+    ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  } else {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+  var formUrl = call(function() { return ss.getFormUrl(); });
+  return formUrl;
+}
+
+
+function createForm() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var formUrl = ss.getFormUrl();
+  if (!formUrl) {
+    var form = FormApp.create("Untitled Form");
+    form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
+    var formEditUrl = form.getEditUrl();
+    getSetFirstFormSubmission(form);
+    return formEditUrl;
+  } else {
+    formUrlEdit = "Error: Looks like there is already a form attached to this spreadsheet";
+  }
+}
+
+
+function testRunCopyDown() {
+  var e = {};
+   e.range = SpreadsheetApp.getActiveRange();
+   runCopyDown(e);
+}
+
+
+function runCopyDown(e) {
+  var lock = LockService.getDocumentLock();
+  var hasLock = lock.tryLock(10000);
+  //if (hasLock) {  //removed lock -- treats the lock like a rate limiter instead
+    try {
+      var authStatus = checkAuthStatus();
+      if (authStatus) {  
+        try {
+          var range = e.range;
+          var sheet = range.getSheet();
+          var ss = sheet.getParent();
+          var props = PropertiesService.getDocumentProperties();
+          var sheetId = sheet.getSheetId().toString();
+          props.setProperty('formSheetId', sheetId);
+          var formulaRow = props.getProperty('formulaRow');
+          formulaRow = formulaRow ? formulaRow : 2;
+          formulaRow = !isNaN(formulaRow) ? parseInt(formulaRow) : 2;
+          var row = range.getRow();
+          var formUrl = getFormUrl(ss);
+          var statusCol = getStatusCol(sheet);
+          var excludeCols = checkAutoCratMergeCol(sheet);
+          var copyDownPairs = getFormulaRangePairs(sheet, formulaRow, excludeCols);
+          var asValuesPairs = getAsValuesPairs(sheet);
+          var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues();
+          var message = '';
+          for (var i=0; i<values.length; i++) {
+            if ((values[i][statusCol-1] === "")&&(row!==formulaRow)) {
+              message = '';
+              var error = copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow);
+              if (error.indexOf('error')!==-1) {
+                //var message = "Due to limitations in Apps Script, copyDown is not compatible with filters. \nDeleting this status message, removing all filters, and submitting a new form response will allow copyDown to this row.";
+                var message = "copyDown could not complete " + error;
+                sheet.getRange(row, statusCol).setValue(message);
+              } else {
+                var message = constructMessage(copyDownPairs, asValuesPairs, formulaRow);
+                sheet.getRange(row, statusCol).setValue(message);
+              }
+              call(function() { SpreadsheetApp.flush(); });
+            }
+          }
+          try {
+            logFormulasCopiedDown_();
+          } catch(err) {
+            lock.releaseLock();
+            return;
+          }
+        } catch(err) {
+          lock.releaseLock();
+          var errInfo = catchToString_(err);
+          logErrInfo_(errInfo);
+          return;
+        }
+      } else {
+        lock.releaseLock();
+        logErrInfo_("Authorization function failure");
+        return;
+      }
+    } catch(err) {
+      lock.releaseLock();
+      var errInfo = catchToString_(err);
+      logErrInfo_(errInfo);
+      return;
+    }
+    lock.releaseLock();
+    return;
+  //} else {
+  //  logErrInfo_("Failed to obtain lock");
+  //  return;
+ // }
+}
+
+
+function testCheckAutoCratMergeCol() {
+  var sheetId = PropertiesService.getDocumentProperties().getProperty('formSheetId');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = getSheetById(sheetId, ss);
+  var autoCratMergeCol = checkAutoCratMergeCol(sheet);
+}
+
 
 function checkAutoCratMergeCol(sheet) {
   var headers = getSheetHeaders(sheet);
@@ -48,9 +162,52 @@ function checkAutoCratMergeCol(sheet) {
   return autoCratMergeCols;
 }
 
+
+function checkAuthStatus() {
+  var authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
+  // Check if the actions of the trigger require authorizations
+  // that have not been supplied yet -- if so, warn the active
+  // user via email (if possible).  This check is required when
+  // using triggers with add-ons to maintain functional triggers.
+  var authStatus = authInfo.getAuthorizationStatus();
+  if (authStatus == ScriptApp.AuthorizationStatus.REQUIRED) {
+    // Re-authorization is required. In this case, the user
+    // needs to be alerted that they need to reauthorize; the
+    // normal trigger action is not conducted, since it authorization
+    // needs to be provided first. Send at most one
+    // 'Authorization Required' email a day, to avoid spamming
+    // users of the add-on.
+    var props = PropertiesService.getDocumentProperties();
+    var lastAuthEmailDate = props.getProperty('lastAuthEmailDate');
+    var today = new Date().toDateString();
+    if (lastAuthEmailDate != today) {
+      if (MailApp.getRemainingDailyQuota() > 0) {
+        var html = HtmlService.createTemplateFromFile('AuthorizationEmail');
+        html.url = authInfo.getAuthorizationUrl();
+        html.addonTitle = addonTitle;
+        var message = html.evaluate();
+        MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
+            'Authorization Required',
+            message.getContent(), {
+                name: addonTitle,
+                htmlBody: message.getContent()
+            }
+        );
+        logAuthEmailSent_();
+      }
+      props.setProperty('lastAuthEmailDate', today);
+    }
+    return false;
+  } else {
+    return true;
+  }
+}
+
+
+
 function constructMessage(copyDownPairs, asValuesPairs, formulaRow) {
   if (!formulaRow) {
-    //formulaRow = 2;
+    formulaRow = 2;
   }
   var message = 'Copied down all formats, and formulas from row ' + formulaRow + ' in columns ';
   var count = 0;
