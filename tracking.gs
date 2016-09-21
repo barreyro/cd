@@ -34,6 +34,7 @@ function setSid_() {
   var userProperties = PropertiesService.getUserProperties();
   var scriptNameLower = scriptName.toLowerCase();
   var sid = docProperties.getProperty(scriptNameLower + "_sid");
+
   if (sid == null || sid == "")
   {
     incrementNumUses_();

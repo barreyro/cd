@@ -25,7 +25,7 @@ function launchCopyDownUi() {
     try {
       var form = FormApp.openByUrl(formUrl);
     } catch (err) {
-      SpreadsheetApp.getUi().alert("Oops! It appears you don't have edit rights on the attached form. copyDown can only work with Forms that you have editing rights on.");
+      SpreadsheetApp.getUi().alert("Oops! It appears you do not have edit rights on the attached form. copyDown can only work with Forms that you have editing rights on.");
       return;
     }
     var template = HtmlService.createTemplateFromFile('interface');
