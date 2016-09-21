@@ -245,7 +245,7 @@ function setTriggerValue(returnObj) {
  var triggerState = returnObj.triggerState;
  $('#loading-gif').toggleClass('hidden',true);
  if (triggerState) {
-   $('#secondary-options').toggleClass('hidden', false) ;
+   $('#secondary-options').toggleClass('hidden', false);
    $('#secondary-options input[type=checkbox]').attr('disabled', false);
    google.script.run.withSuccessHandler(showCopyDownOptions).getAvailableHeaders(FORMULA_ROW);
  }
