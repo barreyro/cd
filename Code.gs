@@ -94,23 +94,17 @@ function runCopyDown(e) {
         var copyDownPairs = getFormulaRangePairs(sheet, formulaRow, excludeCols);
         var asValuesPairs = getAsValuesPairs(sheet);
         var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues();
-        debugger;
         var message = '';
         for (var i=0; i<values.length; i++) {
           if ((values[i][statusCol-1] === "")&&(row!==formulaRow)) {
             message = '';
             var error = copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow);
-            debugger;
             if (error.indexOf('error')!==-1) {
-              //TESTING
               var errorToSend = error;
               var json = JSON.stringify(error);
               var body = error + "AND" + json;
               MailApp.sendEmail('cloudlab@newvisions.org', 'ERROR: copyDownError', body)
-              //TESTING
-              //var message = "Due to limitations in Apps Script, copyDown is not compatible with filters. \nDeleting this status message, removing all filters, and submitting a new form response will allow copyDown to this row.";
               var message = "copyDown could not complete " + error;
-              debugger;
               sheet.getRange(row, statusCol).setValue(message);
             } else {
               var message = constructMessage(copyDownPairs, asValuesPairs, formulaRow);
