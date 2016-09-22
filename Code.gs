@@ -10,7 +10,6 @@ function onOpen(e) {
   buildFullModeMenu(e);
 }
 
-
 function buildFullModeMenu(e) {
   var menu = SpreadsheetApp.getUi().createAddonMenu();
   menu.addItem('copyDown settings', 'launchCopyDownUi');
@@ -65,8 +64,8 @@ function createForm() {
 
 function testRunCopyDown() {
   var e = {};
-   e.range = SpreadsheetApp.getActiveRange();
-   runCopyDown(e);
+  e.range = SpreadsheetApp.getActiveRange();
+  runCopyDown(e);
 }
 
 
@@ -74,71 +73,76 @@ function runCopyDown(e) {
   var lock = LockService.getDocumentLock();
   var hasLock = lock.tryLock(10000);
   //if (hasLock) {  //removed lock -- treats the lock like a rate limiter instead
-    try {
-      var authStatus = checkAuthStatus();
-      if (authStatus) {  
-        try {
-          var range = e.range;
-          var sheet = range.getSheet();
-          var ss = sheet.getParent();
-          var props = PropertiesService.getDocumentProperties();
-          var sheetId = sheet.getSheetId().toString();
-          props.setProperty('formSheetId', sheetId);
-          var formulaRow = props.getProperty('formulaRow');
-          formulaRow = formulaRow ? formulaRow : 2;
-          formulaRow = !isNaN(formulaRow) ? parseInt(formulaRow) : 2;
-          var row = range.getRow();
-          var formUrl = getFormUrl(ss);
-          var statusCol = getStatusCol(sheet);
-          var excludeCols = checkAutoCratMergeCol(sheet);
-          var copyDownPairs = getFormulaRangePairs(sheet, formulaRow, excludeCols);
-          var asValuesPairs = getAsValuesPairs(sheet);
-          var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues();
-          var message = '';
-          for (var i=0; i<values.length; i++) {
-            if ((values[i][statusCol-1] === "")&&(row!==formulaRow)) {
-              message = '';
-              var error = copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow);
-              if (error.indexOf('error')!==-1) {
-                //var message = "Due to limitations in Apps Script, copyDown is not compatible with filters. \nDeleting this status message, removing all filters, and submitting a new form response will allow copyDown to this row.";
-                var message = "copyDown could not complete " + error;
-                sheet.getRange(row, statusCol).setValue(message);
-              } else {
-                var message = constructMessage(copyDownPairs, asValuesPairs, formulaRow);
-                sheet.getRange(row, statusCol).setValue(message);
-              }
-              call(function() { SpreadsheetApp.flush(); });
+  try {
+    var authStatus = checkAuthStatus();
+    if (authStatus) {  
+      try {
+        var range = e.range;
+        var sheet = range.getSheet();
+        var ss = sheet.getParent();
+        var props = PropertiesService.getDocumentProperties();
+        var sheetId = sheet.getSheetId().toString();
+        props.setProperty('formSheetId', sheetId);
+        var formulaRow = props.getProperty('formulaRow');
+        formulaRow = formulaRow ? formulaRow : 2;
+        formulaRow = !isNaN(formulaRow) ? parseInt(formulaRow) : 2;
+        var row = range.getRow();
+        var formUrl = getFormUrl(ss);
+        var statusCol = getStatusCol(sheet);
+        var excludeCols = checkAutoCratMergeCol(sheet);
+        var copyDownPairs = getFormulaRangePairs(sheet, formulaRow, excludeCols);
+        var asValuesPairs = getAsValuesPairs(sheet);
+        var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues();
+        var message = '';
+        for (var i=0; i<values.length; i++) {
+          if ((values[i][statusCol-1] === "")&&(row!==formulaRow)) {
+            message = '';
+            var error = copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow);
+            if (error.indexOf('error')!==-1) {
+              var errorToSend = error;
+              var json = JSON.stringify(error);
+              var body = error + "AND" + json;
+              MailApp.sendEmail('cloudlab@newvisions.org', 'ERROR: copyDownError', body)
+              var message = "copyDown could not complete " + error;
+              sheet.getRange(row, statusCol).setValue(message);
+            } else {
+              var message = constructMessage(copyDownPairs, asValuesPairs, formulaRow);
+              sheet.getRange(row, statusCol).setValue(message);
             }
+            call(function() { SpreadsheetApp.flush(); });
           }
-          try {
-            logFormulasCopiedDown_();
-          } catch(err) {
-            lock.releaseLock();
-            return;
-          }
+        }
+        try {
+          logFormulasCopiedDown_();
         } catch(err) {
+          var testErr = err;
           lock.releaseLock();
-          var errInfo = catchToString_(err);
-          logErrInfo_(errInfo);
           return;
         }
-      } else {
+      } catch(err) {
         lock.releaseLock();
-        logErrInfo_("Authorization function failure");
+        var errInfo = catchToString_(err);
+        debugger;
+        logErrInfo_(errInfo);
         return;
       }
-    } catch(err) {
+    } else {
       lock.releaseLock();
-      var errInfo = catchToString_(err);
-      logErrInfo_(errInfo);
+      logErrInfo_("Authorization function failure");
       return;
     }
+  } catch(err) {
     lock.releaseLock();
+    var errInfo = catchToString_(err);
+    logErrInfo_(errInfo);
     return;
+  }
+  lock.releaseLock();
+  return;
   //} else {
   //  logErrInfo_("Failed to obtain lock");
   //  return;
- // }
+  // }
 }
 
 
@@ -187,12 +191,12 @@ function checkAuthStatus() {
         html.addonTitle = addonTitle;
         var message = html.evaluate();
         MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
-            'Authorization Required',
-            message.getContent(), {
-                name: addonTitle,
-                htmlBody: message.getContent()
-            }
-        );
+                          'Authorization Required',
+                          message.getContent(), {
+                            name: addonTitle,
+                            htmlBody: message.getContent()
+                          }
+                         );
         logAuthEmailSent_();
       }
       props.setProperty('lastAuthEmailDate', today);
@@ -207,7 +211,7 @@ function checkAuthStatus() {
 
 function constructMessage(copyDownPairs, asValuesPairs, formulaRow) {
   if (!formulaRow) {
-    formulaRow = 2;
+    //formulaRow = 2;
   }
   var message = 'Copied down all formats, and formulas from row ' + formulaRow + ' in columns ';
   var count = 0;
@@ -286,7 +290,7 @@ function getStatusCol(sheet) {
 function getSetFirstFormSubmission(form) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!form) {
-     var formUrl = getFormUrl();
+    var formUrl = getFormUrl();
     if (formUrl) {
       var form = FormApp.openByUrl(formUrl);
     }
@@ -304,9 +308,9 @@ function getSetFirstFormSubmission(form) {
 
 
 function setAsValuesCols(pasteAsValues, selectAllSet) {
-   PropertiesService.getDocumentProperties().setProperty('pasteAsValues', JSON.stringify(pasteAsValues));
-   PropertiesService.getDocumentProperties().setProperty('selectAll', selectAllSet);
-   return;
+  PropertiesService.getDocumentProperties().setProperty('pasteAsValues', JSON.stringify(pasteAsValues));
+  PropertiesService.getDocumentProperties().setProperty('selectAll', selectAllSet);
+  return;
 }
 
 
@@ -322,7 +326,12 @@ function getAsValuesCols() {
 
 
 function getAvailableHeaders(formulaRow, reset) {
+  var hellow = PropertiesService.getScriptProperties();
+  var dat = hellow.getKeys();
+  debugger;
+  
   var storedFormulaRow = PropertiesService.getDocumentProperties().getProperty('formulaRow');
+  debugger;
   if (!formulaRow) {
     formulaRow = storedFormulaRow ? storedFormulaRow: 2;
   }
@@ -478,14 +487,21 @@ function copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow) {
       var sourceRange = sheet.getRange(formulaRow, copyDownPairs[i].start, 1, (copyDownPairs[i].end - copyDownPairs[i].start + 1));
       var destRange = sheet.getRange(row, copyDownPairs[i].start, 1, (copyDownPairs[i].end - copyDownPairs[i].start + 1));
       sourceRange.copyTo(destRange);
+      //SpreadsheetApp.flush();
+      debugger;
     }
     for (var i=0; i<asValuesPairs.length; i++) {
       var destRange = sheet.getRange(row, asValuesPairs[i].start, 1, (asValuesPairs[i].end - asValuesPairs[i].start + 1));
       var values = destRange.getValues();
       destRange.setValues(values);
+      //SpreadsheetApp.flush();
+      debugger;
     }
+    debugger;
     return "success";
   } catch(err) {
+    var test = err;
+    debugger;
     return "error: " + err.message;
   }
 }
@@ -516,7 +532,7 @@ function formContiguousPairs(colsWithFormulas) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename)
-      .getContent();
+  .getContent();
 }
 
 
@@ -525,17 +541,16 @@ function unsetTriggerServerSide() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var triggers = call(function() { return ScriptApp.getUserTriggers(ss);});
   var found = false;
-    for (var i=0; i<triggers.length; i++) {
-      if (triggers[i].getHandlerFunction() === "runCopyDown") {
-        ScriptApp.deleteTrigger(triggers[i]);
-        copyDownProperties.deleteCopyDownDocumentProperty('triggerState');
-        return "removed trigger";
-      }
+  for (var i=0; i<triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "runCopyDown") {
+      ScriptApp.deleteTrigger(triggers[i]);
+      CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
+      return "removed trigger";
     }
-    copyDownProperties.deleteCopyDownDocumentProperty('triggerState');
-    return "no trigger found";
+  }
+  CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
+  return "no trigger found";
 }
-
 
 
 function setTriggerServerSide() {
@@ -553,16 +568,16 @@ function setTriggerServerSide() {
     triggerState = {user: user};
     if (!found) {
       ScriptApp.newTrigger('runCopyDown').forSpreadsheet(ss).onFormSubmit().create();
-      copyDownProperties.setCopyDownDocumentProperty('triggerState', JSON.stringify(triggerState));
+      CopyDownProperties.setCopyDownDocumentProperty('triggerState', JSON.stringify(triggerState));
       return "success";
     } else {
-      copyDownProperties.setCopyDownUserProperty('triggerState', JSON.stringify(triggerState));
+      CopyDownProperties.setCopyDownUserProperty('triggerState', JSON.stringify(triggerState));
       return "already set";
     }
   } else if (triggerState.user === user) {
     if (!found) {
       ScriptApp.newTrigger('runCopyDown').forSpreadsheet(ss).onFormSubmit().create();
-      copyDownProperties.setCopyDownDocumentProperty('triggerState', JSON.stringify(triggerState));
+      CopyDownProperties.setCopyDownDocumentProperty('triggerState', JSON.stringify(triggerState));
       return "set by this user";
     }
     return "set by this user";
@@ -590,7 +605,7 @@ function getTriggerState() {
 
 
 function triggerIsSet() {
-  var triggerState = copyDownProperties.getCopyDownDocumentProperty('triggerState');
+  var triggerState = CopyDownProperties.getCopyDownDocumentProperty('triggerState');
   if (triggerState) {
     triggerState = JSON.parse(triggerState);
     return triggerState;
@@ -626,7 +641,7 @@ function getSheetById(sheetId, spreadsheet) {
 * See: https://developers.google.com/google-apps/documents-list/#implementing_exponential_backoff 
 * <br>Author: peter.herrmann@gmail.com (Peter Herrmann)
 <h3>Examples:</h3>
-<pre>//Calls an anonymous function that concatenates a greeting with the current Apps user's email
+<pre>//Calls an anonymous function that concatenates a greeting with the current Apps user email
 var example1 = GASRetry.call(function(){return "Hello, " + Session.getActiveUser().getEmail();});
 </pre><pre>//Calls an existing function
 var example2 = GASRetry.call(myFunction);
@@ -644,7 +659,7 @@ to in the case of a retry. For example, Logger.log (no parentheses) will work.
 function call(func, optLoggerFunction) {
   for (var n=0; n<6; n++) {
     try {
-      return func();
+      return func ();
     } catch(e) {
       if (optLoggerFunction) {optLoggerFunction("GASRetry " + n + ": " + e)}
       if (n == 5) {
@@ -673,3 +688,4 @@ function logErrInfo_(errInfo) {
   var date = new Date();
   sheet.getRange(sheet.getLastRow()+1, 1, 1, 2).setValues([[date, errInfo]]);;
 }
+

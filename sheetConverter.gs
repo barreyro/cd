@@ -426,7 +426,7 @@ function convertDateTime_(date,format) {
                .replace(/m/g,"M")            // All remaining "m"s are months, so M for SimpleDateFormat
                .replace(/b/g,'m')            // reassert temporary minutes
                .replace(/0+/,'S')            // Milliseconds are 0 in Sheets, upper S in SimpleDateFormat
-               .replace(/"/g,"'")            // Change double to single quotes on filler
+               .replace(/"/g,"'")            // 'Change double to single quotes on filler
   var result = Utilities.formatDate(
           date,
           thisInstance_.tzone,
