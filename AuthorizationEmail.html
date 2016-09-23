@@ -1,69 +1,14 @@
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-<link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons.css">
-<style>
-#main {
-  
-}
+<p>The Google Forms add-on <i><?= addonTitle ?></i> is set to run automatically
+whenever a form is submitted. The add-on was recently updated and it needs
+you to re-authorize it to run on your behalf.</p>
 
-#button-panel {
-  
-}
+<p>The add-on's automatic functions are temporarily disabled until you
+re-authorize the add-on. You can accomplish this by opening one of the forms
+using the add-on and running the add-on through the menu. Alternatively, you
+can click this link to approve authorization directly:</p>
 
-#loading-gif {
-  width: 25px;
-  height: 25px;
-  vertical-align: middle;
-  margin-left: 10px;
-}
+<p><a href="<?= url ?>">Click here</a> to re-authorize the add-on.</p>
 
-#form-edit-link {
-  margin: 15px auto;
-}
-
-.hidden {
-  display: none;
-}
-
-.visibility-hidden {
-  visibility: hidden;
-}
-
-.error {
-  color: red;
-}
-
-</style>
-
-<div id = "main">
-  The copyDown Add-on only works for Google Sheets that are the destination for a Google Form.  Would you like to insert a new Google Form into this Sheet? 
-<div id = "form-edit-link" class="visibility-hidden"></div>
-<div id = "button-panel"><button id="create-form-button" onclick="createForm()" class="action">Create me a form!</button><button id="no-thanks-button" onclick="noThanks()">No thanks</button><img id = "loading-gif" class = "hidden" src = "https://googledrive.com/host/0B2-Pf-O8LZyGendST1o3YlBzS1E"/></div>
-</div>
-
-<script>
-function noThanks() {
-  google.script.host.close();
-}
-
-function createForm() {
-  $('#loading-gif').toggleClass('hidden', false);
-  $('#create-form-button').toggleClass('disabled', true).prop('disabled', true);
-  $('#no-thanks-button').toggleClass('hidden', true);
-  google.script.run.withSuccessHandler(refreshFormUrl).createForm();
-}
-
-function refreshFormUrl(formUrl) {
-  $('#create-form-button').toggleClass('hidden', true);
-  $('#loading-gif').toggleClass('hidden', true);
-  $('#form-edit-link').toggleClass('visibility-hidden');
-  if (formUrl.indexOf("Error") === -1) {
-    $('#form-edit-link').html('<a href="' + formUrl + '">Take me to my form!</a>');
-    $('#form-edit-link').click(noThanks);
-  } else {
-    $('#form-edit-link').html(formUrl).toggleClass('error', true);
-  }
-}
-
-
-</script>
+<p>This notification email will be sent to you at most once per day
+until the add-on is re-authorized.</p>
 
