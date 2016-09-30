@@ -16,144 +16,6 @@ function buildFullModeMenu(e) {
   menu.addToUi();
 }
 
-
-function launchCopyDownUi() {
-  var formUrl = getFormUrl(); 
-  if (formUrl) {
-    setSid_();
-    try {
-      var form = FormApp.openByUrl(formUrl);
-    } catch (err) {
-      SpreadsheetApp.getUi().alert("Oops! It appears you do not have edit rights on the attached form. copyDown can only work with Forms that you have editing rights on.");
-      return;
-    }
-    var template = HtmlService.createTemplateFromFile('interface');
-    SpreadsheetApp.getUi().showSidebar(template.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME).setTitle("Copy Down Formulas on Form Submit"));
-  } else {
-    var template = HtmlService.createTemplateFromFile('formCreator');
-    SpreadsheetApp.getUi().showModalDialog(template.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME).setHeight(100), "Attach a form to this Spreadsheet?");
-  }
-}
-
-// replace with new Sheets method once it is added.
-function getFormUrl(ss) {
-  if (ss !== true) {
-    ss = ss || SpreadsheetApp.getActiveSpreadsheet();
-  } else {
-    ss = SpreadsheetApp.getActiveSpreadsheet();
-  }
-  var formUrl = call(function() { return ss.getFormUrl(); });
-  return formUrl;
-}
-
-
-function createForm() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var formUrl = ss.getFormUrl();
-  if (!formUrl) {
-    var form = FormApp.create("Untitled Form");
-    form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
-    var formEditUrl = form.getEditUrl();
-    getSetFirstFormSubmission(form);
-    return formEditUrl;
-  } else {
-    formUrlEdit = "Error: Looks like there is already a form attached to this spreadsheet";
-  }
-}
-
-
-function testRunCopyDown() {
-  var e = {};
-  e.range = SpreadsheetApp.getActiveRange();
-  runCopyDown(e);
-}
-
-
-function runCopyDown(e) {
-  var lock = LockService.getDocumentLock();
-  var hasLock = lock.tryLock(10000);
-  //if (hasLock) {  //removed lock -- treats the lock like a rate limiter instead
-  try {
-    var authStatus = checkAuthStatus();
-    if (authStatus) {  
-      try {
-        var range = e.range;
-        var sheet = range.getSheet();
-        var ss = sheet.getParent();
-        var props = PropertiesService.getDocumentProperties();
-        var sheetId = sheet.getSheetId().toString();
-        props.setProperty('formSheetId', sheetId);
-        var formulaRow = props.getProperty('formulaRow');
-        formulaRow = formulaRow ? formulaRow : 2;
-        formulaRow = !isNaN(formulaRow) ? parseInt(formulaRow) : 2;
-        var row = range.getRow();
-        var formUrl = getFormUrl(ss);
-        var statusCol = getStatusCol(sheet);
-        var excludeCols = checkAutoCratMergeCol(sheet);
-        var copyDownPairs = getFormulaRangePairs(sheet, formulaRow, excludeCols);
-        var asValuesPairs = getAsValuesPairs(sheet);
-        var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues();
-        var message = '';
-        for (var i=0; i<values.length; i++) {
-          if ((values[i][statusCol-1] === "")&&(row!==formulaRow)) {
-            message = '';
-            var error = copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow);
-            if (error.indexOf('error')!==-1) {
-              var errorToSend = error;
-              var json = JSON.stringify(error);
-              var body = error + "AND" + json;
-              MailApp.sendEmail('cloudlab@newvisions.org', 'ERROR: copyDownError', body)
-              var message = "copyDown could not complete " + error;
-              sheet.getRange(row, statusCol).setValue(message);
-            } else {
-              var message = constructMessage(copyDownPairs, asValuesPairs, formulaRow);
-              sheet.getRange(row, statusCol).setValue(message);
-            }
-            call(function() { SpreadsheetApp.flush(); });
-          }
-        }
-        try {
-          logFormulasCopiedDown_();
-        } catch(err) {
-          var testErr = err;
-          lock.releaseLock();
-          return;
-        }
-      } catch(err) {
-        lock.releaseLock();
-        var errInfo = catchToString_(err);
-        debugger;
-        logErrInfo_(errInfo);
-        return;
-      }
-    } else {
-      lock.releaseLock();
-      logErrInfo_("Authorization function failure");
-      return;
-    }
-  } catch(err) {
-    lock.releaseLock();
-    var errInfo = catchToString_(err);
-    logErrInfo_(errInfo);
-    return;
-  }
-  lock.releaseLock();
-  return;
-  //} else {
-  //  logErrInfo_("Failed to obtain lock");
-  //  return;
-  // }
-}
-
-
-function testCheckAutoCratMergeCol() {
-  var sheetId = PropertiesService.getDocumentProperties().getProperty('formSheetId');
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getSheetById(sheetId, ss);
-  var autoCratMergeCol = checkAutoCratMergeCol(sheet);
-}
-
-
 function checkAutoCratMergeCol(sheet) {
   var headers = getSheetHeaders(sheet);
   var colTextIncludes = "Link to merged Doc";
@@ -165,7 +27,6 @@ function checkAutoCratMergeCol(sheet) {
   }
   return autoCratMergeCols;
 }
-
 
 function checkAuthStatus() {
   var authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
@@ -191,12 +52,12 @@ function checkAuthStatus() {
         html.addonTitle = addonTitle;
         var message = html.evaluate();
         MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
-                          'Authorization Required',
-                          message.getContent(), {
-                            name: addonTitle,
-                            htmlBody: message.getContent()
-                          }
-                         );
+            'Authorization Required',
+            message.getContent(), {
+                name: addonTitle,
+                htmlBody: message.getContent()
+            }
+        );
         logAuthEmailSent_();
       }
       props.setProperty('lastAuthEmailDate', today);
@@ -207,11 +68,21 @@ function checkAuthStatus() {
   }
 }
 
-
+function columnToLetter(column)
+{
+  var temp, letter = '';
+  while (column > 0)
+  {
+    temp = (column - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    column = (column - temp - 1) / 26;
+  }
+  return letter;
+}
 
 function constructMessage(copyDownPairs, asValuesPairs, formulaRow) {
   if (!formulaRow) {
-    //formulaRow = 2;
+    formulaRow = 2;
   }
   var message = 'Copied down all formats, and formulas from row ' + formulaRow + ' in columns ';
   var count = 0;
@@ -249,70 +120,65 @@ function constructMessage(copyDownPairs, asValuesPairs, formulaRow) {
   return message;
 }
 
-
-function columnToLetter(column)
-{
-  var temp, letter = '';
-  while (column > 0)
-  {
-    temp = (column - 1) % 26;
-    letter = String.fromCharCode(temp + 65) + letter;
-    column = (column - temp - 1) / 26;
+function copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow) {
+  try {
+    if (!formulaRow) {
+      formulaRow = 2;
+    }
+    var lastColumn = sheet.getLastColumn();
+    var sourceRange = sheet.getRange(formulaRow, 1, 1, lastColumn);
+    var destRange = sheet.getRange(row, 1, 1, lastColumn);
+    sourceRange.copyTo(destRange, {formatOnly: true});
+    for (var i=0; i<copyDownPairs.length; i++) {
+      var sourceRange = sheet.getRange(formulaRow, copyDownPairs[i].start, 1, (copyDownPairs[i].end - copyDownPairs[i].start + 1));
+      var destRange = sheet.getRange(row, copyDownPairs[i].start, 1, (copyDownPairs[i].end - copyDownPairs[i].start + 1));
+      sourceRange.copyTo(destRange);
+    }
+    for (var i=0; i<asValuesPairs.length; i++) {
+      var destRange = sheet.getRange(row, asValuesPairs[i].start, 1, (asValuesPairs[i].end - asValuesPairs[i].start + 1));
+      var values = destRange.getValues();
+      destRange.setValues(values);
+    }
+    return "success";
+  } catch(err) {
+    return "error: " + err.message;
   }
-  return letter;
 }
 
-
-function getStatusCol(sheet) {
-  var headers = getSheetHeaders(sheet);
-  var statusColText = "Formula Copy Down Status";
-  var colIndex = headers.indexOf(statusColText);
-  var statusCol = 0;
-  if (colIndex === -1) {
-    var lastCol = sheet.getLastColumn();
-    sheet.insertColumnAfter(lastCol);  
-    statusCol = lastCol + 1;
-    sheet.getRange(1, statusCol, sheet.getMaxRows(), 1).setWrap(true);
-    sheet.setColumnWidth(statusCol, 250);
-    var statusHeader = sheet.getRange(1, statusCol);
-    statusHeader.setValue(statusColText).setBackground('purple').setFontColor('white').setFontWeight('bold').setNote('This column is needed by the copyDown Add-on');
-    getSetFirstFormSubmission();
-    SpreadsheetApp.flush();
-    sheet.getRange(2, statusCol).setValue("Master formula row. Do not sort.");
-    SpreadsheetApp.flush();
-  } else {
-    statusCol = colIndex + 1;
-  }
-  return statusCol;
-}
-
-
-function getSetFirstFormSubmission(form) {
+function createForm() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!form) {
-    var formUrl = getFormUrl();
-    if (formUrl) {
-      var form = FormApp.openByUrl(formUrl);
-    }
-  }
-  if (form) {
-    var responses = form.getResponses();
-    if (responses.length === 0) {
-      var items = form.getItems();
-      var response = form.createResponse().submit();
-      Utilities.sleep(3000);  
-      ss.toast("An empty form submission was just submitted to row 2. Plase build your formulas in that row");
-    }
+  var formUrl = ss.getFormUrl();
+  if (!formUrl) {
+    var form = FormApp.create("Untitled Form");
+    form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
+    var formEditUrl = form.getEditUrl();
+    getSetFirstFormSubmission(form);
+    return formEditUrl;
+  } else {
+    formUrlEdit = "Error: Looks like there is already a form attached to this spreadsheet";
   }
 }
 
-
-function setAsValuesCols(pasteAsValues, selectAllSet) {
-  PropertiesService.getDocumentProperties().setProperty('pasteAsValues', JSON.stringify(pasteAsValues));
-  PropertiesService.getDocumentProperties().setProperty('selectAll', selectAllSet);
-  return;
+function formContiguousPairs(colsWithFormulas) {
+  var contiguousPairs = [];
+  var initiated = false;
+  for (var i=0; i<colsWithFormulas.length; i++) {
+    if (initiated === false) {
+      var thisPair = {};
+      thisPair.start = colsWithFormulas[i];
+      initiated = true;
+    }
+    //columns are contiguous
+    if ((colsWithFormulas[i] == colsWithFormulas[i+1]-1)) {
+      continue;
+    } else {
+      thisPair.end = colsWithFormulas[i];
+      initiated = false;
+      contiguousPairs.push(thisPair);
+    }  
+  }
+  return contiguousPairs;
 }
-
 
 function getAsValuesCols() {
   var pasteAsValues = PropertiesService.getDocumentProperties().getProperty('pasteAsValues');
@@ -324,14 +190,22 @@ function getAsValuesCols() {
   return pasteAsValues;
 }
 
+function getAsValuesPairs(sheet) {
+  var properties = PropertiesService.getDocumentProperties().getProperties();
+  var headers = getSheetHeaders(sheet);
+  var pasteAsValues =  properties.pasteAsValues ? JSON.parse(properties.pasteAsValues) : []; 
+  var asValuesCols = [];
+  for (var i=0; i<headers.length; i++) {
+    if (pasteAsValues.indexOf(headers[i])!==-1) {
+      asValuesCols.push(i+1);
+    }
+  }
+  var rangePairs = formContiguousPairs(asValuesCols);
+  return rangePairs;
+}
 
 function getAvailableHeaders(formulaRow, reset) {
-  var hellow = PropertiesService.getScriptProperties();
-  var dat = hellow.getKeys();
-  debugger;
-  
   var storedFormulaRow = PropertiesService.getDocumentProperties().getProperty('formulaRow');
-  debugger;
   if (!formulaRow) {
     formulaRow = storedFormulaRow ? storedFormulaRow: 2;
   }
@@ -364,19 +238,6 @@ function getAvailableHeaders(formulaRow, reset) {
   returnObj.selectAllSet = PropertiesService.getDocumentProperties().getProperty('selectAll');
   return returnObj;
 }
-
-
-function getSheetHeaders(sheet) {
-  var headers = [];
-  var lastRow = sheet.getLastRow();
-  if (lastRow !== 0) {
-    var lastCol = sheet.getLastColumn();
-    var headersRange = sheet.getRange(1, 1, 1, lastCol);
-    headers = convertRange(headersRange)[0];
-  }
-  return headers;
-}
-
 
 function getFormDestinationSheet(formUrl, reset) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -429,9 +290,6 @@ function getFormDestinationSheet(formUrl, reset) {
   return formSheet;
 }
 
-
-
-
 function getFormulaRangePairs(sheet, formulaRow, excludeCols) {
   if (!formulaRow) {
     formulaRow = 2;
@@ -447,111 +305,205 @@ function getFormulaRangePairs(sheet, formulaRow, excludeCols) {
   return rangePairs; 
 }
 
-
-function getAsValuesPairs(sheet) {
-  var properties = PropertiesService.getDocumentProperties().getProperties();
-  var headers = getSheetHeaders(sheet);
-  var pasteAsValues =  properties.pasteAsValues ? JSON.parse(properties.pasteAsValues) : []; 
-  var asValuesCols = [];
-  for (var i=0; i<headers.length; i++) {
-    if (pasteAsValues.indexOf(headers[i])!==-1) {
-      asValuesCols.push(i+1);
-    }
+// replace with new Sheets method once it is added.
+function getFormUrl(ss) {
+  if (ss !== true) {
+    ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  } else {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
   }
-  var rangePairs = formContiguousPairs(asValuesCols);
-  return rangePairs;
+  var formUrl = call(function() { return ss.getFormUrl(); });
+  return formUrl;
 }
 
-
-function waitAndGiveValue() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Lookup Sheet');
-  var values = sheet.getDataRange().getValues();
-  for (var i=0; i<values.length; i++) {
-    if (values[i][0] === 2000225194) {
-      return values[i][1];
+function getSetFirstFormSubmission(form) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!form) {
+    var formUrl = getFormUrl();
+    if (formUrl) {
+      var form = FormApp.openByUrl(formUrl);
+    }
+  }
+  if (form) {
+    var responses = form.getResponses();
+    if (responses.length === 0) {
+      var items = form.getItems();
+      var response = form.createResponse().submit();
+      Utilities.sleep(3000);  
+      ss.toast("An empty form submission was just submitted to row 2. Plase build your formulas in that row");
     }
   }
 }
 
-
-function copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow) {
+function getSheetById(sheetId, spreadsheet) {
   try {
-    if (!formulaRow) {
-      formulaRow = 2;
+    sheetId = parseFloat(sheetId);
+    var sheets = spreadsheet.getSheets();
+    for (var i=0; i<sheets.length; i++) {
+      if (sheets[i].getSheetId() == sheetId) {
+        return sheets[i];
+      }
     }
-    var lastColumn = sheet.getLastColumn();
-    var sourceRange = sheet.getRange(formulaRow, 1, 1, lastColumn);
-    var destRange = sheet.getRange(row, 1, 1, lastColumn);
-    sourceRange.copyTo(destRange, {formatOnly: true});
-    for (var i=0; i<copyDownPairs.length; i++) {
-      var sourceRange = sheet.getRange(formulaRow, copyDownPairs[i].start, 1, (copyDownPairs[i].end - copyDownPairs[i].start + 1));
-      var destRange = sheet.getRange(row, copyDownPairs[i].start, 1, (copyDownPairs[i].end - copyDownPairs[i].start + 1));
-      sourceRange.copyTo(destRange);
-      //SpreadsheetApp.flush();
-      debugger;
-    }
-    for (var i=0; i<asValuesPairs.length; i++) {
-      var destRange = sheet.getRange(row, asValuesPairs[i].start, 1, (asValuesPairs[i].end - asValuesPairs[i].start + 1));
-      var values = destRange.getValues();
-      destRange.setValues(values);
-      //SpreadsheetApp.flush();
-      debugger;
-    }
-    debugger;
-    return "success";
+    PropertiesService.getDocumentProperties().deleteProperty('formSheetId');
+    return;
   } catch(err) {
-    var test = err;
-    debugger;
-    return "error: " + err.message;
+    throw(err.message);
+    return;
   }
 }
 
-
-
-function formContiguousPairs(colsWithFormulas) {
-  var contiguousPairs = [];
-  var initiated = false;
-  for (var i=0; i<colsWithFormulas.length; i++) {
-    if (initiated === false) {
-      var thisPair = {};
-      thisPair.start = colsWithFormulas[i];
-      initiated = true;
-    }
-    //columns are contiguous
-    if ((colsWithFormulas[i] == colsWithFormulas[i+1]-1)) {
-      continue;
-    } else {
-      thisPair.end = colsWithFormulas[i];
-      initiated = false;
-      contiguousPairs.push(thisPair);
-    }  
+function getSheetHeaders(sheet) {
+  var headers = [];
+  var lastRow = sheet.getLastRow();
+  if (lastRow !== 0) {
+    var lastCol = sheet.getLastColumn();
+    var headersRange = sheet.getRange(1, 1, 1, lastCol);
+    headers = convertRange(headersRange)[0];
   }
-  return contiguousPairs;
+  return headers;
 }
 
+function getStatusCol(sheet) {
+  var headers = getSheetHeaders(sheet);
+  var statusColText = "Formula Copy Down Status";
+  var colIndex = headers.indexOf(statusColText);
+  var statusCol = 0;
+  if (colIndex === -1) {
+    var lastCol = sheet.getLastColumn();
+    sheet.insertColumnAfter(lastCol);  
+    statusCol = lastCol + 1;
+    sheet.getRange(1, statusCol, sheet.getMaxRows(), 1).setWrap(true);
+    sheet.setColumnWidth(statusCol, 250);
+    var statusHeader = sheet.getRange(1, statusCol);
+    statusHeader.setValue(statusColText).setBackground('purple').setFontColor('white').setFontWeight('bold').setNote('This column is needed by the copyDown Add-on');
+    getSetFirstFormSubmission();
+    SpreadsheetApp.flush();
+    sheet.getRange(2, statusCol).setValue("Master formula row. Do not sort.");
+    SpreadsheetApp.flush();
+  } else {
+    statusCol = colIndex + 1;
+  }
+  return statusCol;
+}
 
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename)
-  .getContent();
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-
-
-function unsetTriggerServerSide() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var triggers = call(function() { return ScriptApp.getUserTriggers(ss);});
-  var found = false;
-  for (var i=0; i<triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === "runCopyDown") {
-      ScriptApp.deleteTrigger(triggers[i]);
-      CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
-      return "removed trigger";
-    }
+function getTriggerState() {
+  var returnObj = {};
+  try {
+    returnObj.triggerState = triggerIsSet();
+  } catch (err) {
+    Logger.log(err);
   }
-  CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
-  return "no trigger found";
+  var formulaRow = PropertiesService.getDocumentProperties().getProperty('formulaRow');
+  returnObj.formulaRow = formulaRow ? parseInt(formulaRow) : 2;
+  var user = Session.getActiveUser().getEmail();
+  if (!returnObj.triggerState) {
+    return returnObj;
+  } else if (returnObj.triggerState.user === user) {
+    returnObj.triggerState = "this_user";
+    return returnObj;
+  } else {
+    return returnObj;
+  }
 }
 
+function launchCopyDownUi() {
+  var formUrl = getFormUrl(); 
+  if (formUrl) {
+    setSid_();
+    try {
+      var form = FormApp.openByUrl(formUrl);
+    } catch (err) {
+      SpreadsheetApp.getUi().alert("Oops! It appears you do not have edit rights on the attached form. copyDown can only work with Forms that you have editing rights on.");
+      return;
+    }
+    var template = HtmlService.createTemplateFromFile('interface');
+    SpreadsheetApp.getUi().showSidebar(template.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME).setTitle("Copy Down Formulas on Form Submit"));
+  } else {
+    var template = HtmlService.createTemplateFromFile('formCreator');
+    SpreadsheetApp.getUi().showModalDialog(template.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME).setHeight(100), "Attach a form to this Spreadsheet?");
+  }
+}
+
+function runCopyDown(e) {
+  var lock = LockService.getDocumentLock();
+  var hasLock = lock.tryLock(10000);
+  //if (hasLock) {  //removed lock -- treats the lock like a rate limiter instead
+    try {
+      var authStatus = checkAuthStatus();
+      if (authStatus) {  
+        try {
+          var range = e.range;
+          var sheet = range.getSheet();
+          var ss = sheet.getParent();
+          var props = PropertiesService.getDocumentProperties();
+          var sheetId = sheet.getSheetId().toString();
+          props.setProperty('formSheetId', sheetId);
+          var formulaRow = props.getProperty('formulaRow');
+          formulaRow = formulaRow ? formulaRow : 2;
+          formulaRow = !isNaN(formulaRow) ? parseInt(formulaRow) : 2;
+          var row = range.getRow();
+          var formUrl = getFormUrl(ss);
+          var statusCol = getStatusCol(sheet);
+          var excludeCols = checkAutoCratMergeCol(sheet);
+          var copyDownPairs = getFormulaRangePairs(sheet, formulaRow, excludeCols);
+          var asValuesPairs = getAsValuesPairs(sheet);
+          var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues();
+          var message = '';
+          for (var i=0; i<values.length; i++) {
+            if ((values[i][statusCol-1] === "")&&(row!==formulaRow)) {
+              message = '';
+              var error = copyDownRow(sheet, row, copyDownPairs, asValuesPairs, formulaRow);
+              if (error.indexOf('error')!==-1) {
+                //var message = "Due to limitations in Apps Script, copyDown is not compatible with filters. \nDeleting this status message, removing all filters, and submitting a new form response will allow copyDown to this row.";
+                var message = "copyDown could not complete " + error;
+                sheet.getRange(row, statusCol).setValue(message);
+              } else {
+                var message = constructMessage(copyDownPairs, asValuesPairs, formulaRow);
+                sheet.getRange(row, statusCol).setValue(message);
+              }
+              call(function() { SpreadsheetApp.flush(); });
+            }
+          }
+          try {
+            logFormulasCopiedDown_();
+          } catch(err) {
+            lock.releaseLock();
+            return;
+          }
+        } catch(err) {
+          lock.releaseLock();
+          var errInfo = catchToString_(err);
+          logErrInfo_(errInfo);
+          return;
+        }
+      } else {
+        lock.releaseLock();
+        logErrInfo_("Authorization function failure");
+        return;
+      }
+    } catch(err) {
+      lock.releaseLock();
+      var errInfo = catchToString_(err);
+      logErrInfo_(errInfo);
+      return;
+    }
+    lock.releaseLock();
+    return;
+  //} else {
+  //  logErrInfo_("Failed to obtain lock");
+  //  return;
+ // }
+}
+
+function setAsValuesCols(pasteAsValues, selectAllSet) {
+   PropertiesService.getDocumentProperties().setProperty('pasteAsValues', JSON.stringify(pasteAsValues));
+   PropertiesService.getDocumentProperties().setProperty('selectAll', selectAllSet );
+   return;
+}
 
 function setTriggerServerSide() {
   var triggerState = triggerIsSet();
@@ -562,6 +514,7 @@ function setTriggerServerSide() {
   for (var i=0; i<triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === "runCopyDown") {
       found = true;
+      debugger;
     }
   }
   if (!triggerState) {
@@ -586,53 +539,58 @@ function setTriggerServerSide() {
   }
 }
 
+function testCheckAutoCratMergeCol() {
+  var sheetId = PropertiesService.getDocumentProperties().getProperty('formSheetId');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = getSheetById(sheetId, ss);
+  var autoCratMergeCol = checkAutoCratMergeCol(sheet);
+}
 
-function getTriggerState() {
-  var returnObj = {};
-  returnObj.triggerState = triggerIsSet();
-  var formulaRow = PropertiesService.getDocumentProperties().getProperty('formulaRow');
-  returnObj.formulaRow = formulaRow ? parseInt(formulaRow) : 2;
-  var user = Session.getActiveUser().getEmail();
-  if (!returnObj.triggerState) {
-    return returnObj;
-  } else if (returnObj.triggerState.user === user) {
-    returnObj.triggerState = "this_user";
-    return returnObj;
-  } else {
-    return returnObj;
+function testRunCopyDown() {
+  var e = {};
+  e.range = SpreadsheetApp.getActiveRange();
+  runCopyDown(e);
+}
+
+function waitAndGiveValue() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Lookup Sheet');
+  var values = sheet.getDataRange().getValues();
+  for (var i=0; i<values.length; i++) {
+    if (values[i][0] === 2000225194) {
+      return values[i][1];
+    }
   }
 }
 
-
-function triggerIsSet() {
-  var triggerState = CopyDownProperties.getCopyDownDocumentProperty('triggerState');
-  if (triggerState) {
-    triggerState = JSON.parse(triggerState);
-    return triggerState;
-  } else {
-    return false;
-  }
-}
-
-
-function getSheetById(sheetId, spreadsheet) {
-  try {
-    sheetId = parseFloat(sheetId);
-    var sheets = spreadsheet.getSheets();
-    for (var i=0; i<sheets.length; i++) {
-      if (sheets[i].getSheetId() == sheetId) {
-        return sheets[i];
+function unsetTriggerServerSide() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var triggers = call(function() { return ScriptApp.getUserTriggers(ss);});
+  var found = false;
+    for (var i=0; i<triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === "runCopyDown") {
+        ScriptApp.deleteTrigger(triggers[i]);
+        CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
+        return "removed trigger";
       }
     }
-    PropertiesService.getDocumentProperties().deleteProperty('formSheetId');
-    return;
-  } catch(err) {
-    throw(err.message);
-    return;
-  }
+    CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
+    return "no trigger found";
 }
 
-
+function triggerIsSet() {
+  try {
+    var triggerStateKey = 'triggerState';
+    try {
+       var triggerState = CopyDownProperties.getCopyDownDocumentProperty(triggerStateKey);
+       triggerState = JSON.parse(triggerState);
+       return triggerState;
+    } catch (e) {
+      Logger.log(e);
+    }
+  } catch(err) {
+    return err;
+  }
+}
 
 /**
 * Invokes a function, performing up to 5 retries with exponential backoff.
@@ -659,7 +617,7 @@ to in the case of a retry. For example, Logger.log (no parentheses) will work.
 function call(func, optLoggerFunction) {
   for (var n=0; n<6; n++) {
     try {
-      return func ();
+      return func();
     } catch(e) {
       if (optLoggerFunction) {optLoggerFunction("GASRetry " + n + ": " + e)}
       if (n == 5) {
@@ -669,9 +627,6 @@ function call(func, optLoggerFunction) {
     }    
   }
 }
-
-
-
 
 function catchToString_(err) {
   var errInfo = "Caught something:\n"; 
