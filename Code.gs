@@ -10,13 +10,11 @@ function onOpen(e) {
   buildFullModeMenu(e);
 }
 
-
 function buildFullModeMenu(e) {
   var menu = SpreadsheetApp.getUi().createAddonMenu();
   menu.addItem('copyDown settings', 'launchCopyDownUi');
   menu.addToUi();
 }
-
 
 function launchCopyDownUi() {
   var formUrl = getFormUrl(); 
@@ -62,11 +60,10 @@ function createForm() {
   }
 }
 
-
 function testRunCopyDown() {
   var e = {};
-   e.range = SpreadsheetApp.getActiveRange();
-   runCopyDown(e);
+  e.range = SpreadsheetApp.getActiveRange();
+  runCopyDown(e);
 }
 
 
@@ -511,13 +508,9 @@ function formContiguousPairs(colsWithFormulas) {
   return contiguousPairs;
 }
 
-
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename)
-      .getContent();
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
-
-
 
 function unsetTriggerServerSide() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -526,11 +519,11 @@ function unsetTriggerServerSide() {
     for (var i=0; i<triggers.length; i++) {
       if (triggers[i].getHandlerFunction() === "runCopyDown") {
         ScriptApp.deleteTrigger(triggers[i]);
-        copyDownProperties.deleteCopyDownDocumentProperty('triggerState');
+        CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
         return "removed trigger";
       }
     }
-    copyDownProperties.deleteCopyDownDocumentProperty('triggerState');
+    CopyDownProperties.deleteCopyDownDocumentProperty('triggerState');
     return "no trigger found";
 }
 
@@ -553,7 +546,7 @@ function setTriggerServerSide() {
       CopyDownProperties.setCopyDownDocumentProperty('triggerState', JSON.stringify(triggerState));
       return "success";
     } else {
-      copyDownProperties.setCopyDownUserProperty('triggerState', JSON.stringify(triggerState));
+      CopyDownProperties.setCopyDownUserProperty('triggerState', JSON.stringify(triggerState));
       return "already set";
     }
   } else if (triggerState.user === user) {
@@ -591,7 +584,6 @@ function getTriggerState() {
 
 
 function triggerIsSet() {
-//.getCopyDownDocumentProperty('triggerState');
   try {
     var triggerStateKey = 'triggerState';
     try {
@@ -599,12 +591,10 @@ function triggerIsSet() {
        triggerState = JSON.parse(triggerState);
        return triggerState;
     } catch (e) {
-      Logger.log("Line 602"  + e );
+      Logger.log(e);
     }
-   
-   // var triggerState = PropertiesService.getDocumentProperties().getProperty('triggerState');
   } catch(err) {
-    return "poop";
+    return err;
   }
 }
 
@@ -663,9 +653,6 @@ function call(func, optLoggerFunction) {
     }    
   }
 }
-
-
-
 
 function catchToString_(err) {
   var errInfo = "Caught something:\n"; 

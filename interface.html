@@ -315,8 +315,6 @@ function savedSuccess() {
 
 function refreshCopyDownOptions() {
    $('#save-button').prop('disabled', true);
-   console.log('318');
-   
    $('#loading-gif').toggleClass('hidden',false);
    $('#secondary-options').toggleClass('inactive', true);
    
@@ -454,7 +452,6 @@ function setTrigger() {
 }
 
 function reallySetTrigger() {
-  console.log('~~~~setTriggerServerSide');
   google.script.run
     .withSuccessHandler(function(callback){
       triggerSet(callback);
@@ -467,12 +464,10 @@ function reallySetTrigger() {
 
 
 function triggerSet(triggerStatus) {
-  console.log("tS: " + triggerStatus);
   //trigger status can be: success, already set, set by this user, or a username
   $('#secondary-options').toggleClass('hidden', false);
   $('#off-text').toggleClass('hidden', true);
   if ((triggerStatus !== "success") && (triggerStatus !== "already set") && (triggerStatus !== "set by this user")) {
-     console.log('475');
    $("#secondary-options").html("Trigger already set by " + triggerStatus); 
    return;
   }
@@ -480,7 +475,6 @@ function triggerSet(triggerStatus) {
   TRIGGER_STATE = 'this_user';
   google.script.run
     .withSuccessHandler(function(){
-      console.log('483');
       showCopyDownOptions();
      })
     .getAvailableHeaders(FORMULA_ROW, false);
@@ -489,7 +483,6 @@ function triggerSet(triggerStatus) {
 
 function unsetTrigger() {
   $('#loading-gif').toggleClass('hidden',false);
-    console.log('unsetTriggerCalled()');
   $('#secondary-options').toggleClass('hidden', true);
   google.script.run
     .withSuccessHandler(function() {
