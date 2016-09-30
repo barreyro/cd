@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <head>
 <base target="_top">
-<script src="//ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
-<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.12.0/themes/smoothness/jquery-ui.css" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.0/themes/smoothness/jquery-ui.css" />
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.12.0/jquery-ui.min.js"></script>
 <?!= include('switch_js'); ?>
 <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons.css">
@@ -223,7 +223,7 @@ p {
   <p>Additional checkboxes allow you to determine whether to leave formulas live, or paste back their results as values.</p>
   <p>Combine with the <a href="http://cloudlab.newvisions.org/add-ons/formmule-email-merge-utility">formMule</a> or <a href="http://cloudlab.newvisions.org/add-ons/autocrat">autoCrat</a> Add-on for Sheets to bring calculated values into your Form-triggered email and document merges.</p>
 </div>
-<img id = "loading-gif" src = "https://googledrive.com/host/0B2-Pf-O8LZyGendST1o3YlBzS1E"/>
+<img id="loading-gif" src="https://storage.googleapis.com/cloudlab-images/loading.gif">
 </div>
 
 </body>
@@ -309,7 +309,9 @@ function refreshCopyDownOptions() {
    $('#loading-gif').toggleClass('hidden',false);
    $('#secondary-options').toggleClass('inactive', true);
    var formulaRow = $('#formula-row').val();
-   google.script.run.withSuccessHandler(showCopyDownOptions).getAvailableHeaders(FORMULA_ROW, true);
+   google.script.run
+      .withSuccessHandler(showCopyDownOptions)
+      .getAvailableHeaders(FORMULA_ROW, true);
 }
 
 
