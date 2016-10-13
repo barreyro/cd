@@ -2,11 +2,9 @@
 <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons.css">
 <style>
 #main {
-  
 }
 
 #button-panel {
-  
 }
 
 #loading-gif {
@@ -37,7 +35,10 @@
 <div id = "main">
   The copyDown Add-on only works for Google Sheets that are the destination for a Google Form.  Would you like to insert a new Google Form into this Sheet? 
 <div id = "form-edit-link" class="visibility-hidden"></div>
-<div id = "button-panel"><button id="create-form-button" onclick="createForm()" class="action">Create me a form!</button><button id="no-thanks-button" onclick="noThanks()">No thanks</button><img id = "loading-gif" class = "hidden" src = "https://googledrive.com/host/0B2-Pf-O8LZyGendST1o3YlBzS1E"/></div>
+<div id = "button-panel">
+    <button id="create-form-button" onclick="createForm()" class="action">Create me a form!</button>
+    <button id="no-thanks-button" onclick="noThanks()">No thanks</button>
+    <img id = "loading-gif" class = "hidden" src = "https://storage.googleapis.com/cloudlab-images/loading.gif"></div>
 </div>
 
 <script>
@@ -49,16 +50,20 @@ function createForm() {
   $('#loading-gif').toggleClass('hidden', false);
   $('#create-form-button').toggleClass('disabled', true).prop('disabled', true);
   $('#no-thanks-button').toggleClass('hidden', true);
-  google.script.run.withSuccessHandler(refreshFormUrl).createForm();
+  google.script.run
+    .withSuccessHandler(function(callback){
+      refreshFormUrl(callback);
+     })
+    .createForm();
 }
 
 function refreshFormUrl(formUrl) {
+  var newFormLink = '<a href="' + formUrl + '" target="_blank"> Take me to my form!</a>';
   $('#create-form-button').toggleClass('hidden', true);
   $('#loading-gif').toggleClass('hidden', true);
   $('#form-edit-link').toggleClass('visibility-hidden');
   if (formUrl.indexOf("Error") === -1) {
-    $('#form-edit-link').html('<a href="' + formUrl + '">Take me to my form!</a>');
-    $('#form-edit-link').click(noThanks);
+    $('#form-edit-link').html(newFormLink);
   } else {
     $('#form-edit-link').html(formUrl).toggleClass('error', true);
   }
